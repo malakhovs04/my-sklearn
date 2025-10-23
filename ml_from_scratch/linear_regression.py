@@ -178,15 +178,30 @@ class LinearRegression(BaseModel):
     
     @property
     def coef_(self):
-        """sklearn-style: коэффициенты (без bias)"""
-        return self.weights[1:].flatten() if self.weights is not None else None
+     
+     """sklearn-style: коэффициенты (без bias)"""
+
+     return self.weights[1:].flatten() if self.weights is not None else None
 
     @property
     def intercept_(self):
+
         """sklearn-style: свободный член (bias)"""
+
         return float(self.weights[0]) if self.weights is not None else None
     
     def get_metrics(self) -> Dict[str, Any]:
+        """
+        Возвращает метрики и графики в base64.
+
+        param: None (использует self.X_test, self.y_test)
+        return: dict с ключами:
+                - final_loss, loss_history
+                - coef_, intercept_, weights
+                - mae, rmse, r2 (если есть X_test)
+                - loss_plot, regression_plot (в base64)
+        """
+        
         if not self.loss_history:
             return {'message': 'Модель не обучена'}
 
@@ -194,11 +209,10 @@ class LinearRegression(BaseModel):
             'final_loss': float(self.loss_history[-1]),
             'loss_history': self.loss_history.copy(),
             'coef_': self.coef_.tolist() if self.coef_ is not None else None,
-            'intercept_': self.intercept_,  # ← УБРАЛИ [0]! Это float!
+            'intercept_': self.intercept_,  
             'weights': self.weights.flatten().tolist()
         }
 
-        # === График loss ===
         plt.figure(figsize=(8, 5))
         plt.plot(self.loss_history, 'o-' if len(self.loss_history) == 1 else '-', color='blue')
         plt.title('Training Loss')
@@ -212,22 +226,18 @@ class LinearRegression(BaseModel):
         buf.close()
         plt.close()
 
-        # === Если есть X_test и y_test ===
         if hasattr(self, 'X_test') and hasattr(self, 'y_test'):
             X_test = np.asarray(self.X_test)
             y_test = np.asarray(self.y_test).flatten()
             y_pred = self.predict(X_test).flatten()
 
-            # MAE, RMSE
             add_metrics = self.get_additional_metrics(X_test, y_test)
             metrics.update(add_metrics)
 
-            # R²
             ss_res = np.sum((y_test - y_pred) ** 2)
             ss_tot = np.sum((y_test - np.mean(y_test)) ** 2)
             metrics['r2'] = float(1 - ss_res / ss_tot) if ss_tot > 0 else 0.0
 
-            # График регрессии
             idx = np.argsort(X_test.flatten())
             X_sorted = X_test[idx]
             y_pred_sorted = y_pred[idx]
